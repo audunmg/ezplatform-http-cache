@@ -71,34 +71,12 @@ sub vcl_recv {
     // Retrieve client user context hash and add it to the forwarded request.
     call ez_user_context_hash;
 
+    if (std.healthy(req.backend_hint)) {
+        // change the behavior for healthy backends: Cap grace to 10s
+        set req.grace = 10s;
+    }
     // If it passes all these tests, do a lookup anyway.
     return (hash);
-}
-
-// Called when a cache lookup is successful. The object being hit may be stale: It can have a zero or negative ttl with only grace or keep time left.
-sub vcl_hit {
-   if (obj.ttl >= 0s) {
-       // A pure unadulterated hit, deliver it
-       return (deliver);
-   }
-
-   if (obj.ttl + obj.grace > 0s) {
-       // Object is in grace, logic below in this block is what differs from default:
-       // https://varnish-cache.org/docs/5.2/users-guide/vcl-grace.html#grace-mode
-       if (!std.healthy(req.backend_hint)) {
-           // Service is unhealthy, deliver from cache
-           return (deliver);
-       } else if (req.http.cookie) {
-           // Request it by a user with session, refresh the cache to avoid issues for editors and forum users
-           return (miss);
-       }
-
-       // By default deliver cache, automatically triggers a background fetch
-       return (deliver);
-   }
-
-   // fetch & deliver once we get the result
-   return (miss);
 }
 
 // Called when the requested object has been retrieved from the backend
@@ -116,7 +94,7 @@ sub vcl_backend_response {
         set beresp.do_esi = true;
     }
 
-    // Make Varnish keep all objects for up to 1 hour beyond their TTL, see vcl_hit for Request logic on this
+    // Make Varnish keep all objects for up to 1 hour beyond their TTL, to serve in case the backend is down
     set beresp.grace = 1h;
 
     // Compressing the content
