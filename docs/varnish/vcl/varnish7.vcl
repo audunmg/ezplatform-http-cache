@@ -11,7 +11,7 @@ import xkey;
 import cookie;
 
 // For customizing your backend and acl rules see parameters.vcl
-include "/etc/varnish/parameters.vcl";
+include "parameters.vcl";
 
 // Called at the beginning of a request, after the complete request has been received
 sub vcl_recv {
