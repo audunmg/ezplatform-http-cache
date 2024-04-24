@@ -17,4 +17,5 @@ varnish v1 -arg "-p vcl_path=${tmpdir} -f $PWD/docs/varnish/vcl/${vclfile}" -sta
 client c1 {
     txreq
     rxresp
+    expect resp.status == 200
 } -run
